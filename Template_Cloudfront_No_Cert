@@ -1,0 +1,137 @@
+Description: |
+  Script for Cloudfront deployment including SSL generation and currently also S3 Bucket creation.
+Parameters:
+  DomainName:
+    Type: String
+    Description: Enter the domain name you would like to use for deployment. This will be used to set the CNAME and generate certificate.
+    Default: example.domain.com
+Resources:
+  CloudFrontDistribution:
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      DistributionConfig:
+        DefaultCacheBehavior:
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+          TargetOriginId: s3-bucket-ru
+          ViewerProtocolPolicy: redirect-to-https
+        DefaultRootObject: /index.html
+        CustomErrorResponses:
+          - ErrorCachingMinTTL: 300
+            ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCachingMinTTL: 300
+            ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        Enabled: true
+        HttpVersion: http2
+        Origins:
+          - DomainName: !Join 
+              - ''
+              - - !Ref Bucket
+                - .s3.amazonaws.com
+            Id: s3-bucket-ru
+            S3OriginConfig:
+              OriginAccessIdentity: !Join 
+                - ''
+                - - origin-access-identity/cloudfront/
+                  - !Ref CloudFrontOriginAccessIdentity
+      Tags:
+        - Key: Domain
+          Value: !Ref DomainName
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: c37531fb-ab18-463c-ba2c-8ac5f206d815
+  CloudFrontOriginAccessIdentity:
+    Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub 'CloudFront OAI for ${DomainName}'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 20a4a522-9ccb-4757-a30c-031e03b753fc
+  Bucket:
+    Type: 'AWS::S3::Bucket'
+    DeletionPolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: Domain
+          Value: !Ref DomainName
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 5850a6d4-e0d0-455a-a5cf-093a49a23980
+  BucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref Bucket
+      PolicyDocument:
+        Statement:
+          - Action:
+              - 's3:GetObject'
+            Effect: Allow
+            Resource: !Join 
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref Bucket
+                - /*
+            Principal:
+              CanonicalUser: !GetAtt CloudFrontOriginAccessIdentity.S3CanonicalUserId
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 7a029bdb-1100-4c0c-a9bd-ab36c75b9007
+Metadata:
+  'AWS::CloudFormation::Designer':
+    5850a6d4-e0d0-455a-a5cf-093a49a23980:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 0
+        'y': 70
+      z: 1
+      embeds: []
+    20a4a522-9ccb-4757-a30c-031e03b753fc:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 180
+        'y': 90
+      z: 1
+      embeds: []
+    7a029bdb-1100-4c0c-a9bd-ab36c75b9007:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 60
+        'y': 210
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - 5850a6d4-e0d0-455a-a5cf-093a49a23980
+    456e0514-ff19-4948-9143-7830b6d5c364:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 180
+        'y': 210
+      z: 1
+      embeds: []
+    c37531fb-ab18-463c-ba2c-8ac5f206d815:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 300
+        'y': 90
+      z: 1
+      embeds: []
